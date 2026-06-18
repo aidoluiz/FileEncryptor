@@ -1,0 +1,141 @@
+﻿Build1=Default,com.aldinformatica.fileencryptor
+File1=controle_v_37_android_ios_SET24.sqlite
+File2=controle_v_38_android_ios_JUN26.sqlite
+File3=fch.sqlite
+File4=fch.sqlite 11.12.23
+File5=fch.sqlite_mai_2024
+FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
+FileGroup4=Default Group
+FileGroup5=Default Group
+Group=Default Group
+Library1=icore
+Library2=iencryption
+Library3=irandomaccessfile
+Library4=ihud
+NumberOfFiles=5
+NumberOfLibraries=4
+NumberOfModules=0
+Version=10
+@EndOfDesignText@
+'Code module
+#Region  Project Attributes 
+	#ApplicationLabel: ALD Encrypt
+	#Version: 1.0.0 
+	'Orientation possible values: Portrait, LandscapeLeft, LandscapeRight and PortraitUpsideDown
+	#iPhoneOrientations: Portrait, LandscapeLeft, LandscapeRight
+	#iPadOrientations: Portrait, LandscapeLeft, LandscapeRight, PortraitUpsideDown
+	#PlistExtra: <key>UIFileSharingEnabled</key><true/>
+	#MinVersion: 11
+'===================== DESENVOLVIMENTO ====================================
+
+'Desenvolvimento 2020 expira em 10/08/21. Serve pra todos Aplicativos.
+'#CertificateFile: ios_development.cer
+''''#CertificateFile: ios_development_2023.cer
+'Desenvolvimento use Build Configuration com.aldinformatica.* (onde * é nome do app). Aplicativos sem IN_APP_PURCHASE (serve outros apps diferentes do infranote).
+'#ProvisionFile: APPS_DESENVOLVIMENTO_2022.mobileprovision
+'#ProvisionFile: ALD_INFORMATICA_DESENVOLVIMENTO_2022.mobileprovision 
+''''#ProvisionFile: ALD_INFORMATICA_DESENVOLVIMENTO_2023.mobileprovision
+
+#CertificateFile : ios_development_2024.cer
+#ProvisionFile   : CORINGA_DESENVOLVIMENTO_2024.mobileprovision
+
+'Desenvolvimento use em Build Configuration com.aldinformatica.teste  aplicativos com IN_APP_PURCHASE (infranote).
+'#ProvisionFile: TODOS_APLICATIVOS_2020.mobileprovision  
+
+'===================== DESENVOLVIMENTO ====================================
+
+
+#End Region
+
+Sub Process_Globals
+	'These global variables will be declared once when the application starts.
+	'Public variables can be accessed from all modules.
+	Public App As Application
+	Public NavControl As NavigationController
+	Private Page1 As Page
+	Private MyCipher As Cipher
+	Private Timer1 As Timer
+	Private DM As HUD
+	Private MyList As List
+	Private FilePassword As String = "o3u42llqj54120kljflaldj"  'Password to encrypt
+	Private NumFiles As Int
+	Private NumFileProgress As Int
+End Sub
+
+Private Sub Application_Start (Nav As NavigationController)
+	NavControl = Nav
+	Page1.Initialize("Page1")
+	Page1.Title = "ALD ENCRYPT"
+	Page1.RootPanel.Color = Colors.White
+	NavControl.ShowPage(Page1)
+
+	'Dim Arquivo As String = "registros.sqlite"
+	'Dim Password As String = "o3u42llqj54120kljflaldj"
+	MyList.initialize
+	Dim MyFile As String
+	MyList=File.ListFiles(File.DirAssets)
+	NumFiles=MyList.size
+	
+	Timer1.Initialize("Timer1",10)
+	Timer1.Enabled=True
+	
+End Sub
+
+Private Sub Timer1_Tick
+	Timer1.Enabled=False
+	EncryptFile(File.DirAssets, MyList.Get(NumFileProgress), FilePassword)
+	DM.ProgressDialogShow("Encrypting file " & MyList.Get(NumFileProgress))	
+	NumFileProgress=NumFileProgress+1
+End Sub
+
+Private Sub EncryptFile(Dir As String, FileName As String, Password As String)
+	Dim FileArray() As Byte = ReadFile(Dir, FileName, False)
+	WriteFile(File.DirDocuments, FileName, MyCipher.Encrypt(FileArray, Password), True)
+End Sub
+
+Private Sub DecryptFile(Dir As String, FileName As String, Password As String)
+	Dim FileArray() As Byte = ReadFile(File.DirDocuments, FileName, True)
+	WriteFile(Dir,FileName,MyCipher.Decrypt(FileArray, Password), False)
+End Sub
+
+'Lê o arquivo para a memória e retorna uma matrix de Bytes.
+'
+'Dir = Diretorio onde esta o arquivo.
+'FileName = Nome do Arquivo.
+'DecrypetFlag = True se os Bytes estão encriptados (coloca extensão ".en" ao procurar pelo nome do arquivo.
+Private Sub ReadFile(Dir As String, FileName As String, DecryptedFlag As Boolean) As Byte()
+	Dim Extension As String
+	If DecryptedFlag Then Extension=".en"   
+	Dim out As OutputStream
+   	out.InitializeToBytesArray(100) 'size not really important
+   	File.Copy2(File.OpenInput(Dir, FileName & Extension), out)
+   	Return out.ToBytesArray
+End Sub
+
+'Escreve o arquivo a no diretório especificado.
+'
+'Dir = Diretorio onde o arquivo será gravado.
+'FileName = Nome do arquivo a ser gravado.
+'Buffer() = Bytes do arquivo.
+'DecrypetFlag = True se os Bytes estão encriptados (coloca extensão ".en" no final do nome do arquivo.
+Private Sub WriteFile(Dir As String, FileName As String, Buffer() As Byte, DecryptedFlag As Boolean) 
+	Dim Extension As String
+	If DecryptedFlag Then Extension=".en"
+   	Dim out As OutputStream
+   	out = File.OpenOutput(Dir, FileName & Extension, False)
+   	Dim In As InputStream
+   	In.InitializeFromBytesArray(Buffer, 0, Buffer.Length)
+	File.Copy2(In, out)
+    out.Close
+  	In.Close
+	If NumFileProgress<NumFiles-1 Then
+		Timer1.Enabled=True
+	Else
+		DM.ProgressDialogHide
+		NumFiles=NumFiles-1
+		Msgbox(NumFiles & " Files Encrypted in File.DirDocuments","ALD ENCRYPT")	
+	End If
+End Sub
+
